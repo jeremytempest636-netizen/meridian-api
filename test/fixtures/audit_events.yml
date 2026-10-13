@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  work_order: one
+  actor: MyString
+  action: MyString
+  changeset:
+
+two:
+  work_order: two
+  actor: MyString
+  action: MyString
+  changeset:
