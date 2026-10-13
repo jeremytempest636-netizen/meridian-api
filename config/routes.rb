@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  get "up", to: "rails/health#show"
+
   namespace :api do
     namespace :v1 do
       post "auth/register", to: "auth#register"

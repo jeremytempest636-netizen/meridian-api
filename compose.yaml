@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: meridian_api
+      POSTGRES_PASSWORD: meridian_docker_local_only
+      POSTGRES_DB: meridian_api_production
+    volumes:
+      - meridian_docker_pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init/01-create-databases.sh:/docker-entrypoint-initdb.d/01-create-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meridian_api -d meridian_api_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    image: meridian-api:local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE:?Set SECRET_KEY_BASE in your environment}"
+      MERIDIAN_API_DATABASE_PASSWORD: meridian_docker_local_only
+      DATABASE_URL: "postgresql://meridian_api:meridian_docker_local_only@db:5432/meridian_api_production"
+      CACHE_DATABASE_URL: "postgresql://meridian_api:meridian_docker_local_only@db:5432/meridian_api_production_cache"
+      QUEUE_DATABASE_URL: "postgresql://meridian_api:meridian_docker_local_only@db:5432/meridian_api_production_queue"
+      CABLE_DATABASE_URL: "postgresql://meridian_api:meridian_docker_local_only@db:5432/meridian_api_production_cable"
+    ports:
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped
+
+volumes:
+  meridian_docker_pgdata:
