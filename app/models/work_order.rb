@@ -1,4 +1,4 @@
-﻿class WorkOrder < ApplicationRecord
+class WorkOrder < ApplicationRecord
   # Associations
   belongs_to :assigned_user, class_name: "User", optional: true
 
@@ -21,7 +21,7 @@
            if: -> { sla_due_at.present? && new_record? }
 
   # Callbacks
-  before_validation :set_resolved_at, if: :resolution_status?
+  before_validation :manage_resolved_at, if: :will_save_change_to_status?
 
   # Scopes
   scope :overdue, lambda {
@@ -52,11 +52,11 @@
     errors.add(:sla_due_at, "must be in the future")
   end
 
-  def resolution_status?
-    status == "resolved" && will_save_change_to_status?
-  end
-
-  def set_resolved_at
-    self.resolved_at ||= Time.current
+  def manage_resolved_at
+    if status == "resolved"
+      self.resolved_at ||= Time.current
+    elsif status_in_database == "resolved"
+      self.resolved_at = nil
+    end
   end
 end
