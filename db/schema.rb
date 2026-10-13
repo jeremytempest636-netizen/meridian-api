@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_13_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -45,7 +45,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_100000) do
     t.string "assignee"
     t.datetime "sla_due_at"
     t.datetime "resolved_at"
+    t.bigint "assigned_user_id"
+    t.index ["assigned_user_id"], name: "index_work_orders_on_assigned_user_id"
   end
 
   add_foreign_key "audit_events", "work_orders"
+  add_foreign_key "work_orders", "users", column: "assigned_user_id"
 end

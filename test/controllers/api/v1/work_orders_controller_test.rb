@@ -324,4 +324,51 @@ class Api::V1::WorkOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Resource not found", error["message"]
     assert error["request_id"].present?
   end
+  test "GET index only returns work orders assigned to the technician" do
+    assigned = WorkOrder.create!(
+      title: "Assigned Work Order",
+      status: "open",
+      priority: "high",
+      assigned_user: @technician
+    )
+
+    WorkOrder.create!(
+      title: "Unassigned Work Order",
+      status: "open",
+      priority: "high"
+    )
+
+    get api_v1_work_orders_url,
+        headers: authenticate_as(@technician)
+
+    assert_response :success
+    ids = response.parsed_body["data"].map { |item| item["id"] }
+    assert_includes ids, assigned.id
+    assert_equal 1, ids.length
+  end
+
+  test "GET show hides work orders assigned to another technician" do
+    other_technician = User.create!(
+      email: "other-technician@example.test",
+      password: "TestPassword123!",
+      role: "technician",
+      active: true
+    )
+
+    work_order = WorkOrder.create!(
+      title: "Private Work Order",
+      status: "open",
+      priority: "high",
+      assigned_user: other_technician
+    )
+
+    get api_v1_work_order_url(work_order),
+        headers: authenticate_as(@technician)
+
+    assert_response :not_found
+    assert_equal "not_found", response.parsed_body.dig("error", "code")
+  end
 end
+
+
+

@@ -1,4 +1,4 @@
-module Api
+﻿module Api
   module V1
     class WorkOrdersController < ApplicationController
       include Authenticatable
@@ -8,7 +8,7 @@ module Api
       before_action :set_work_order, only: %i[show update destroy]
 
       def index
-        work_orders = WorkOrder.order(created_at: :desc)
+        work_orders = visible_work_orders.order(created_at: :desc)
 
         if params[:status].present? && !WorkOrder::STATUSES.include?(params[:status].to_s)
           return render_api_error(code: "invalid_status_filter", message: "The status filter is invalid", status: :bad_request)
@@ -31,7 +31,6 @@ module Api
         end
 
         total_count = work_orders.count
-
         page_input = params[:page].presence || "1"
         per_page_input = params[:per_page].presence || "10"
 
@@ -48,9 +47,7 @@ module Api
         per_page = per_page_input.to_i.clamp(1, 100)
         total_pages = (total_count.to_f / per_page).ceil
 
-        work_orders = work_orders
-          .limit(per_page)
-          .offset((page - 1) * per_page)
+        work_orders = work_orders.limit(per_page).offset((page - 1) * per_page)
 
         render json: {
           data: work_orders,
@@ -64,8 +61,7 @@ module Api
       end
 
       def overdue
-        work_orders = WorkOrder.overdue.order(sla_due_at: :asc)
-        render json: work_orders
+        render json: visible_work_orders.overdue.order(sla_due_at: :asc)
       end
 
       def show
@@ -77,7 +73,6 @@ module Api
 
         WorkOrder.transaction do
           work_order.save!
-
           WorkOrderAuditLogger.log(
             work_order: work_order,
             actor: current_user.email,
@@ -88,13 +83,17 @@ module Api
 
         render json: work_order, status: :created
       rescue ActiveRecord::RecordInvalid => e
-        render_api_error(code: "validation_failed", message: "Work order validation failed", status: :unprocessable_entity, details: e.record.errors.full_messages)
+        render_api_error(
+          code: "validation_failed",
+          message: "Work order validation failed",
+          status: :unprocessable_entity,
+          details: e.record.errors.full_messages
+        )
       end
 
       def update
         WorkOrder.transaction do
           @work_order.update!(work_order_params)
-
           WorkOrderAuditLogger.log(
             work_order: @work_order,
             actor: current_user.email,
@@ -105,7 +104,12 @@ module Api
 
         render json: @work_order
       rescue ActiveRecord::RecordInvalid => e
-        render_api_error(code: "validation_failed", message: "Work order validation failed", status: :unprocessable_entity, details: e.record.errors.full_messages)
+        render_api_error(
+          code: "validation_failed",
+          message: "Work order validation failed",
+          status: :unprocessable_entity,
+          details: e.record.errors.full_messages
+        )
       end
 
       def destroy
@@ -124,12 +128,20 @@ module Api
         end
       end
 
+      def visible_work_orders
+        if %w[admin supervisor].include?(current_user.role)
+          WorkOrder.all
+        else
+          WorkOrder.where(assigned_user_id: current_user.id)
+        end
+      end
+
       def set_work_order
-        @work_order = WorkOrder.find(params[:id])
+        @work_order = visible_work_orders.find(params[:id])
       end
 
       def work_order_params
-        params.require(:work_order).permit(
+        permitted = params.require(:work_order).permit(
           :title,
           :description,
           :status,
@@ -138,6 +150,13 @@ module Api
           :assignee,
           :sla_due_at
         )
+
+        if %w[admin supervisor].include?(current_user.role)
+          permitted[:assigned_user_id] = params.require(:work_order)[:assigned_user_id] if
+            params.require(:work_order).key?(:assigned_user_id)
+        end
+
+        permitted
       end
     end
   end

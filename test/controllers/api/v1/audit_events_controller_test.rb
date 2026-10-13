@@ -1,12 +1,15 @@
-require "test_helper"
+﻿require "test_helper"
 
 class Api::V1::AuditEventsControllerTest < ActionDispatch::IntegrationTest
   setup do
+    @technician = users(:technician)
+
     @work_order = WorkOrder.create!(
       title: "Audit Trail Test",
       description: "Testing audit events endpoint",
       status: "open",
-      priority: "high"
+      priority: "high",
+      assigned_user: @technician
     )
 
     @work_order.audit_events.create!(
@@ -22,9 +25,9 @@ class Api::V1::AuditEventsControllerTest < ActionDispatch::IntegrationTest
     )
   end
 
-  test "returns audit events in chronological order for an authenticated technician" do
+  test "returns audit events in chronological order for the assigned technician" do
     get "/api/v1/work_orders/#{@work_order.id}/audit_events",
-        headers: authenticate_as(users(:technician))
+        headers: authenticate_as(@technician)
 
     assert_response :success
 
@@ -37,6 +40,21 @@ class Api::V1::AuditEventsControllerTest < ActionDispatch::IntegrationTest
                  body["data"].last["changeset"]["status"]
   end
 
+  test "does not expose audit events to another technician" do
+    other_technician = User.create!(
+      email: "other-technician@example.test",
+      password: "TestPassword123!",
+      role: "technician",
+      active: true
+    )
+
+    get "/api/v1/work_orders/#{@work_order.id}/audit_events",
+        headers: authenticate_as(other_technician)
+
+    assert_response :not_found
+    assert_equal "not_found", response.parsed_body.dig("error", "code")
+  end
+
   test "rejects audit events request without a token" do
     get "/api/v1/work_orders/#{@work_order.id}/audit_events"
 
@@ -45,8 +63,9 @@ class Api::V1::AuditEventsControllerTest < ActionDispatch::IntegrationTest
 
   test "returns not found for a nonexistent work order when authenticated" do
     get "/api/v1/work_orders/999999/audit_events",
-        headers: authenticate_as(users(:technician))
+        headers: authenticate_as(@technician)
 
     assert_response :not_found
+    assert_equal "not_found", response.parsed_body.dig("error", "code")
   end
 end

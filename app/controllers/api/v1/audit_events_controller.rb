@@ -1,4 +1,4 @@
-module Api
+﻿module Api
   module V1
     class AuditEventsController < ApplicationController
       include Authenticatable
@@ -19,7 +19,14 @@ module Api
       private
 
       def set_work_order
-        @work_order = WorkOrder.find(params[:work_order_id])
+        scope =
+          if %w[admin supervisor].include?(current_user.role)
+            WorkOrder.all
+          else
+            WorkOrder.where(assigned_user_id: current_user.id)
+          end
+
+        @work_order = scope.find(params[:work_order_id])
       end
     end
   end
