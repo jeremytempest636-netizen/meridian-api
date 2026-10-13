@@ -7,9 +7,9 @@
 
     code, message =
       if status == 404
-        ["not_found", "Resource not found"]
+        [ "not_found", "Resource not found" ]
       else
-        ["internal_server_error", "An unexpected error occurred"]
+        [ "internal_server_error", "An unexpected error occurred" ]
       end
 
     render json: {

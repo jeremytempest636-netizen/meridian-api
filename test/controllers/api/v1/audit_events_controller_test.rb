@@ -15,13 +15,13 @@ class Api::V1::AuditEventsControllerTest < ActionDispatch::IntegrationTest
     @work_order.audit_events.create!(
       actor: "system",
       action: "created",
-      changeset: { "status" => [nil, "open"] }
+      changeset: { "status" => [ nil, "open" ] }
     )
 
     @work_order.audit_events.create!(
       actor: "system",
       action: "updated",
-      changeset: { "status" => ["open", "in_progress"] }
+      changeset: { "status" => [ "open", "in_progress" ] }
     )
   end
 
@@ -33,10 +33,10 @@ class Api::V1::AuditEventsControllerTest < ActionDispatch::IntegrationTest
 
     body = response.parsed_body
     assert_equal 2, body["data"].length
-    assert_equal ["created", "updated"],
+    assert_equal [ "created", "updated" ],
                  body["data"].map { |event| event["action"] }
 
-    assert_equal ["open", "in_progress"],
+    assert_equal [ "open", "in_progress" ],
                  body["data"].last["changeset"]["status"]
   end
 

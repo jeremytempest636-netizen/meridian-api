@@ -10,7 +10,7 @@ Rails.application.routes.draw do
       get "work_orders/overdue", to: "work_orders#overdue"
 
       resources :work_orders do
-        resources :audit_events, only: [:index]
+        resources :audit_events, only: [ :index ]
       end
     end
   end
